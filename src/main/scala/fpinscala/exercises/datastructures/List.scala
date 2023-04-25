@@ -193,6 +193,21 @@ object List: // `List` companion object. Contains functions for creating and wor
     
 
   // def zipWith - TODO determine signature
-  def zipWith[A](a: List[A], b: List[A]): List[A] = ???
+  // note that the lists a,b do not have to be the same type the same goes for the resulting list
+  def zipWith[A, B, C](a: List[A], b: List[B], f: (A, B) => C): List[C] =
+    (a, b) match
+      case (Cons(aHead, aTail), Cons(bHead, bTail)) => Cons(f(aHead, bHead), zipWith(aTail, bTail, f))
+      case _ => Nil
 
-  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean = ???
+  @tailrec
+  def hasSubsequence[A](sup: List[A], sub: List[A]): Boolean =
+    @tailrec
+    def startsWith[A](l: List[A], test: List[A]): Boolean = 
+      (l, test) match
+        case (_, Nil) => true
+        case (Cons(headSup, tailSup), Cons(headSub, tailSub)) if headSup == headSub => startsWith(tailSup, tailSub) 
+        case _ => false
+    sup match
+      case Nil => sub == Nil
+      case _ if startsWith(sup, sub) => true
+      case Cons(_, tail) => hasSubsequence(tail, sub)

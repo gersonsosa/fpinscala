@@ -50,3 +50,8 @@ flatMap(List(1,2,3), (a) => List(a, a))
 filterViaFlatMap(List(1,2,3,4,5), (a) => a >= 3)
 
 addPairwise(List(1,2,3), List(4,5,6))
+zipWith(List(1,2,3), List(1,2,3), (a, b) => a + b)
+
+hasSubsequence(List(1,2,3,4), List(2,3))
+hasSubsequence(List(1,2,3,4), List(1,2,3))
+hasSubsequence(List(1,2,3,4), List(2,4))
