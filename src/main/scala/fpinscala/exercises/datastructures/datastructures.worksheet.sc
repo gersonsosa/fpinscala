@@ -20,6 +20,10 @@ lengthViaFoldLeft(List(1))
 lengthViaFoldLeft(List(1, 2, 3, 4, 5, 6))
 
 reverse(List(1, 2, 3))
+reverse(List(1,2,3,4,5,6,7,8,9))
+
+reverseR(List(1,2,3,4,5,6,7,8,9))
+
 reverse(List("A", "B", "C"))
 
 foldLeftFromRight(List(1, 2, 3, 4, 5), 0, _ + _)

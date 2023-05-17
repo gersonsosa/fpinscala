@@ -86,6 +86,33 @@ object List: // `List` companion object. Contains functions for creating and wor
       case Nil => acc
       case Cons(h, t) => foldLeft(t, f(acc, h), f)
 
+  // val l = List(1,2,3,4)
+  // foldLeft(List(1,2,3,4), 0, _ + _)
+  // foldLeft(List(2,3,4), 1, _ + _)
+  // foldLeft(List(3,4), 3, _ + _)
+  // foldLeft(List(4), 6, _ + _)
+  // foldLeft(Nil, 10, _ + _)
+  //
+  // foldRight(List(1,2,3,4), 0, _ + _)
+  // 1 + foldRight(List(2,3,4), 0, _ + _)
+  // 1 + 2 + foldRight(List(3,4), 0, _ + _)
+  // 1 + 2 + 3 + foldRight(List(4), 0, _ + _)
+  // 1 + 2 + 3 + 4 + foldRight(Nil, 0, _ + _)
+  // 1 + 2 + 3 + 4 + 0
+  // 1 + 2 + 3 + 4
+  // 1 + 2 + 7
+  // 1 + 9
+  // 10
+
+  def foldRight1[A, B](
+      as: List[A],
+      acc: B,
+      f: (A, B) => B
+  ): B = // Utility functions
+    as match
+      case Nil         => acc
+      case Cons(x, xs) => f(x, foldRight(xs, acc, f))
+
   def sumViaFoldLeft(ns: List[Int]): Int = foldLeft(ns, 0, _ + _)
 
   def productViaFoldLeft(ns: List[Double]): Double = foldLeft(ns, 1.0, _ * _)
@@ -93,11 +120,31 @@ object List: // `List` companion object. Contains functions for creating and wor
   def lengthViaFoldLeft[A](l: List[A]): Int = foldLeft(l, 0, (acc, _) => acc + 1)
 
   // List(1,2,3) => List(3,2,1)
-  def reverse[A](l: List[A]): List[A] = foldLeft(l, List[A](), (acc, head) => Cons(head, acc))
+  def reverse[A](l: List[A]): List[A] =
+    foldLeft(l, List[A](), (acc, head) => Cons(head, acc))
 
-  def foldLeftFromRight[A, B](l: List[A], acc: B, f: (B, A) => B): B = foldRight(l, acc, (a, b) => f(b, a))
+  // reverse in terms of foldRight
+  // this is O(n^2) complexity
+  def reverseR[A](l: List[A]): List[A] = foldRight(
+    l,
+    List[A](),
+    (head, acc) => append(acc, Cons(head, Nil))
+  )
 
-  def foldRightFromLeft[A, B](l: List[A], acc: B, f: (A, B) => B): B = foldLeft(l, acc, (x, y) => f(y, x))
+  def foldLeftFromRight[A, B](l: List[A], acc: B, f: (B, A) => B): B =
+    foldRight(l, acc, (a, b) => f(b, a))
+
+  def foldRightFromLeft[A, B](l: List[A], acc: B, f: (A, B) => B): B =
+    foldLeft(l, acc, (x, y) => f(y, x))
+
+  def foldRightViaFoldLeft_1[A, B](l: List[A], acc: B, f: (A, B) => B): B =
+    val accum: (B => B, A) => (B => B) = (g, a) => b => g(f(a, b))
+    foldLeft(l, (b: B) => b, accum)(acc)
+  // foldLeft(List(1,2,3), (x: B) => x, (g, a) => x => g(a + x))
+  // foldLeft(List(2,3), x => a + x, (g, a) => x => 1 + x)
+  // foldLeft(List(3), x => g(a + x), (g, a) => x => 2 + 1 + x)
+  // foldLeft(Nil, x => g(a + x), (g, a) => x => 3 + 2 + 1 + x)
+  // here x is the inital accumulator = 0
 
   def appendViaFoldRight[A](l: List[A], r: List[A]): List[A] = foldRight(l, r, (a, b) => Cons(a, b))
 
