@@ -43,15 +43,47 @@ doubleToString(List(1.2, 1.3, 1.4, 1.5))
 map(List("1", "2", "3"), _.toInt)
 map2(List("1", "2", "3"), _.toInt)
 
-filter(List(1,2,3,4), (a) => a > 2)
+filter(List(1, 2, 3, 4), (a) => a > 2)
 
-flatMap(List(1,2,3), (a) => List(a, a))
+flatMap(List(1, 2, 3), (a) => List(a, a))
 
-filterViaFlatMap(List(1,2,3,4,5), (a) => a >= 3)
+filterViaFlatMap(List(1, 2, 3, 4, 5), (a) => a >= 3)
 
-addPairwise(List(1,2,3), List(4,5,6))
-zipWith(List(1,2,3), List(1,2,3), (a, b) => a + b)
+addPairwise(List(1, 2, 3), List(4, 5, 6))
+zipWith(List(1, 2, 3), List(1, 2, 3), (a, b) => a + b)
 
-hasSubsequence(List(1,2,3,4), List(2,3))
-hasSubsequence(List(1,2,3,4), List(1,2,3))
-hasSubsequence(List(1,2,3,4), List(2,4))
+hasSubsequence(List(1, 2, 3, 4), List(2, 3))
+hasSubsequence(List(1, 2, 3, 4), List(1, 2, 3))
+hasSubsequence(List(1, 2, 3, 4), List(2, 4))
+
+// Trees
+import fpinscala.exercises.datastructures.Tree
+import fpinscala.exercises.datastructures.Tree.Branch
+import fpinscala.exercises.datastructures.Tree.Leaf
+
+val t =
+  Branch(
+    Branch(
+      Branch(
+        Branch(Leaf(5), Leaf(0)),
+        Leaf(1)
+      ),
+      Branch(Leaf(2), Leaf(3))
+    ),
+    Leaf(4)
+  )
+val t2 = Branch(Leaf(1), Leaf(2))
+val t3 = Leaf(1)
+t.size
+t.maximum
+t.depth
+t2.depth
+t3.depth
+
+t.map(x => s"$x")
+t.sizeViaFold
+t.depthViaFold
+t2.depthViaFold
+t3.depthViaFold
+
+t.mapViaFold(x => s"$x")
