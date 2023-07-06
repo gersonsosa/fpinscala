@@ -1,42 +1,71 @@
 package fpinscala.exercises.laziness
 
+import fpinscala.exercises.laziness.LazyList.cons
+import fpinscala.exercises.laziness.LazyList.empty
+
 enum LazyList[+A]:
   case Empty
   case Cons(h: () => A, t: () => LazyList[A])
 
-  def toList: List[A] = ???
+  def toList: List[A] = this match
+    case Empty      => Nil
+    case Cons(h, t) => h() :: t().toList
 
-  def foldRight[B](z: => B)(f: (A, => B) => B): B = // The arrow `=>` in front of the argument type `B` means that the function `f` takes its second argument by name and may choose not to evaluate it.
+  def foldRight[B](
+      z: => B
+  )(
+      f: (A, => B) => B
+  ): B = // The arrow `=>` in front of the argument type `B` means that the function `f` takes its second argument by name and may choose not to evaluate it.
     this match
-      case Cons(h,t) => f(h(), t().foldRight(z)(f)) // If `f` doesn't evaluate its second argument, the recursion never occurs.
+      case Cons(h, t) =>
+        f(
+          h(),
+          t().foldRight(z)(f)
+        ) // If `f` doesn't evaluate its second argument, the recursion never occurs.
       case _ => z
 
-  def exists(p: A => Boolean): Boolean = 
-    foldRight(false)((a, b) => p(a) || b) // Here `b` is the unevaluated recursive step that folds the tail of the lazy list. If `p(a)` returns `true`, `b` will never be evaluated and the computation terminates early.
+  def exists(p: A => Boolean): Boolean =
+    foldRight(false)((a, b) =>
+      p(a) || b
+    ) // Here `b` is the unevaluated recursive step that folds the tail of the lazy list. If `p(a)` returns `true`, `b` will never be evaluated and the computation terminates early.
 
   @annotation.tailrec
   final def find(f: A => Boolean): Option[A] = this match
-    case Empty => None
     case Cons(h, t) => if (f(h())) Some(h()) else t().find(f)
+    case Empty      => None
 
-  def take(n: Int): LazyList[A] = ???
+  def take(n: Int): LazyList[A] = this match
+    case Cons(h, t) if n > 1 => cons(h(), t().take(n - 1))
+    // we need this branch to avoid evaluation of the tail when n == 1
+    case Cons(h, t) if n == 1 => cons(h(), empty)
+    case _                    => empty
 
-  def drop(n: Int): LazyList[A] = ???
+  @annotation.tailrec // must set the function as final or private to avoid runtime issues
+  final def drop(n: Int): LazyList[A] = this match
+    case Cons(h, t) if n > 0 => t().drop(n - 1)
+    case _                   => this
 
-  def takeWhile(p: A => Boolean): LazyList[A] = ???
+  def takeWhileNaive(p: A => Boolean): LazyList[A] = this match
+    case Cons(h, t) if p(h()) => cons(h(), t().takeWhile(p))
+    case _                    => empty
 
-  def forAll(p: A => Boolean): Boolean = ???
+  def forAll(p: A => Boolean): Boolean =
+    foldRight(true)((elem, acc) => p(elem) && acc)
 
-  def headOption: Option[A] = ???
+  def takeWhile(p: A => Boolean): LazyList[A] =
+    foldRight(Empty: LazyList[A])((elem, acc) =>
+      if (p(elem)) cons(elem, acc) else empty
+    )
+
+  def headOption: Option[A] = foldRight(None: Option[A])((e, _) => Some(e))
 
   // 5.7 map, filter, append, flatmap using foldRight. Part of the exercise is
   // writing your own function signatures.
 
   def startsWith[B](s: LazyList[B]): Boolean = ???
 
-
 object LazyList:
-  def cons[A](hd: => A, tl: => LazyList[A]): LazyList[A] = 
+  def cons[A](hd: => A, tl: => LazyList[A]): LazyList[A] =
     lazy val head = hd
     lazy val tail = tl
     Cons(() => head, () => tail)
@@ -44,7 +73,7 @@ object LazyList:
   def empty[A]: LazyList[A] = Empty
 
   def apply[A](as: A*): LazyList[A] =
-    if as.isEmpty then empty 
+    if as.isEmpty then empty
     else cons(as.head, apply(as.tail*))
 
   val ones: LazyList[Int] = LazyList.cons(1, ones)
