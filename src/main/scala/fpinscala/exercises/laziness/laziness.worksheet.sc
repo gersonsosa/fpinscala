@@ -23,3 +23,7 @@ ll.forAll((elem) => elem > 0)
 ll.forAll((elem) => elem < 0)
 
 ll.headOption
+
+LazyList.fibs.take(10).toList
+
+LazyList.fromViaUnfold(10).take(10).toList

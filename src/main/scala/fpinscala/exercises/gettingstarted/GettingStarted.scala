@@ -34,7 +34,6 @@ object MyProgram:
     acc
 
   // Exercise 1: Write a function to compute the nth fibonacci number
-
   def fibNonTail(n: Int): Int = {
     if (n == 0) 0
     else if (n == 1) 1
@@ -45,7 +44,7 @@ object MyProgram:
     @tailrec
     def next(count: Int = 0, first: Int = 0, second: Int = 1): Int = {
       if (count == n) first
-      else next(count + 1, second, second + first)
+      else next(count + 1, second, first + second)
     }
     next()
 
