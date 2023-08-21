@@ -1,5 +1,7 @@
 package fpinscala.exercises.state
 
+import fpinscala.answers.datastructures.List.result
+
 trait RNG:
   def nextInt: (Int, RNG) // Should generate a random `Int`. We'll later define other functions in terms of `nextInt`.
 
@@ -132,9 +134,24 @@ object State:
       s.map2(acc)(_ :: _)
     }
 
+  def traverse[S, A, B](as: List[A])(f: A => State[S, B]): State[S, List[B]] =
+    as.foldRight[State[S, List[B]]](unit(Nil)) { (a, acc) =>
+      f(a).map2(acc)(_ :: _)
+    }
+
   def apply[S, A](f: S => (A, S)): State[S, A] = f
 
   def unit[S, A](a: A): State[S, A] = s => (a, s)
+
+  def modify[S](f: S => S): State[S, Unit] =
+    for
+      s <- get // Gets the current state and assigns it to `s`.
+      _ <- set(f(s)) // Sets the new state to `f` applied to `s`.
+    yield ()
+
+  def get[S]: State[S, S] = s => (s, s)
+
+  def set[S](s: S): State[S, Unit] = _ => ((), s)
 
 enum Input:
   case Coin, Turn
@@ -142,4 +159,21 @@ enum Input:
 case class Machine(locked: Boolean, candies: Int, coins: Int)
 
 object Candy:
-  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = ???
+  def simulateMachine(inputs: List[Input]): State[Machine, (Int, Int)] = {
+    def transition(input: Input)(s: Machine): Machine = {
+      (input, s) match
+        case (Input.Coin, Machine(true, candies, coins)) if candies > 0 =>
+          Machine(false, candies, coins + 1)
+        case (Input.Turn, Machine(false, candies, coins)) if candies > 0 =>
+          Machine(true, candies - 1, coins)
+        case _ => s
+    }
+
+    for {
+      // we need to return a "non-strict" way of applying the inputs and return
+      // the accumulation of the transitions of state but without the state itself
+      _ <- State.traverse(inputs)(i => State.modify(transition(i)))
+      // the state is accesed via the underlying property
+      result <- State.get
+    } yield (result.coins, result.candies)
+  }
