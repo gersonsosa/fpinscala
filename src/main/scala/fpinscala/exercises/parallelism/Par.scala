@@ -84,6 +84,19 @@ object Par:
   def sequence[A](pas: List[Par[A]]): Par[List[A]] =
     sequenceBalanced(pas.toIndexedSeq).map(_.toList)
 
+  /* evaluate sequence
+   *
+   * val l = List(unit(0), unit(1), unit(2), unit(3), unit(4), unit(5), unit(6), unit(7), unit(8), unit(9))
+   * sequence(l)
+   * sequenceBalanced(l.toIndexedSeq).map(_.toList)
+   * sequenceBalanced([unit(0), ..., unit(4)]).map2([unit(5), ..., unit(9)])(_ ++ _)
+   * es => sequenceBalanced([unit(0), unit(1)]).map2([unit(2), unit(3), unit(4)])(_ ++ _) ++
+   *    sequenceBalanced([unit(5), unit(6)]).map2([unit(7), unit(8), unit(9)])(_ ++ _)
+   * es => sequenceBalanced([unit(0)]).map2(sequenceBalanced([unit(1)])(_ ++ _) ++ ...
+   * Future.unit(0).map(0 => IndexedSeq(0)) ++ unit(1).map(1 => IndexedSeq(1)) ...
+   * this will only be converted to IndexedSeq once we "run" the computation
+   */
+
   def parMap[A, B](ps: List[A])(f: A => B): Par[List[B]] = fork:
     val fbs: List[Par[B]] = ps.map(asyncF(f))
     sequence(fbs)
@@ -92,6 +105,25 @@ object Par:
     val pars: List[Par[List[A]]] =
       l.map(asyncF(a => if f(a) then List(a) else List()))
     sequence(pars).map(_.flatten) // convenience method on `List` for concatenating a list of lists
+
+  def countWords(paragraphs: List[String]): Par[Int] = fork:
+    val words = paragraphs.map(asyncF(_.split(" ").length))
+    sequence(words).map(_.sum)
+
+  def apply[A, B](a: List[A])(f: A => B)(g: List[B] => B): Par[B] =
+    // g is a reduction fn, is the naive way to represent the last step in the count words function
+    val l = a.map(asyncF(f))
+    sequence(l).map(g)
+
+  extension [A](pa: Par[A]) def map3[B, C, D](pb: Par[B])(pc: Par[C])(f: (A, B, C) => D): Par[D] =
+    // we don't have a flatMap yet but it should be a way to compose
+    pc.flatMap(c => pa.map2(pb)((a, b) => f(a, b, c)))
+
+  extension [A](pa: Par[A]) def map4[B, C, D, E](pb: Par[B])(pc: Par[C])(pd: Par[D])(f: (A, B, C, D) => E): Par[E] =
+    es =>
+      val d = pd.run(es).get
+      val c = pc.run(es).get
+      pa.map2(pb)((a, b) => f(a, b, c, d)).run(es)
 
   def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean =
     p(e).get == p2(e).get
