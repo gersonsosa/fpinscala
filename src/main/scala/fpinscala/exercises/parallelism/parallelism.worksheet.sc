@@ -19,3 +19,7 @@ val pd = Par.unit(2)
 
 pa.map3(pb)(pc)((a, b, c) => a + b + c).run(es)
 pa.map4(pb)(pc)(pd)((a, b, c, d) => a + b + c + d).run(es)
+
+val a = Par.lazyUnit(42 + 1)
+// val es1 = Executors.newFixedThreadPool(1), will deadlock
+println(Par.equal(es)(a, Par.fork(a)))

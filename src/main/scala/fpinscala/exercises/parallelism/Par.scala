@@ -125,6 +125,9 @@ object Par:
       val c = pc.run(es).get
       pa.map2(pb)((a, b) => f(a, b, c, d)).run(es)
 
+  extension [A](pa: Par[A]) def map5[B, C, D, E, F](pb: Par[B])(pc: Par[C])(pd: Par[D])(pe: Par[E])(f: (A, B, C, D, E) => F): Par[F] =
+    pe.flatMap(e => pd.flatMap(d => pc.flatMap(c => pa.map2(pb)((a, b) => f(a, b, c, d, e)))))
+
   def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean =
     p(e).get == p2(e).get
 
