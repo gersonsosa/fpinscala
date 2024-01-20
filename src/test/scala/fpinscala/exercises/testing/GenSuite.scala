@@ -26,7 +26,6 @@ object Gen:
 */
 
 // Gen tests:
-/*
   test("Exercise 8.4")(ExhGen.int ** ExhGen.int ** genRNG):
     case n ** m ** rng =>
       val (start, stopExclusive) = if n < m then (n, m) else (m, n)
@@ -91,8 +90,13 @@ object Gen:
       val (unionList3, _) = genUnion3.listOfN(shortSample).next(rng)
       assert(unionList3.count(_ == n) >= shortSample / 5, "g2 is twice as common as g1")
       assert(unionList3.count(_ == m) >= shortSample / 2, "g2 is twice as common as g1")
-*/
 
+  test("Explore generate ascii String")(ExhGen.choose(0, 1000) ** ExhGen.int ** genRNG):
+    case n ** m ** rng =>
+      val ascii = Gen.ascii(n)
+      val (s, _) = ascii.next(rng)
+      assert(s.size == n)
+      assert(s.forall(c => c.isValidChar))
 
 // Prop tests: Before using these tests (starting from Exercise 8.9),
 // add the next block to fpinscala.exercises.testing.Gen.scala file

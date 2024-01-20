@@ -60,6 +60,10 @@ object RNG:
     val (d2, next2) = double(next1)
     ((d, d1, d2), next2)
 
+  def boolean(rng: RNG): (Boolean, RNG) =
+    rng.nextInt match
+      case (i, next) => (i % 2 == 0, next)
+
   def ints(count: Int)(rng: RNG): (List[Int], RNG) =
     def iter(c: Int, r: RNG, acc: List[Int]): (List[Int], RNG) =
       if c <= 0 then (acc, r)
