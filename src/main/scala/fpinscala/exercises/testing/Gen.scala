@@ -12,36 +12,87 @@ The library developed in this chapter goes through several iterations. This file
 shell, which you can fill in and modify while working through the chapter.
  */
 
-type TestCases = Int
-
-enum Result:
-  case Passed
-  case Falsified(failure: FailedCase, successful: SuccessCount)
-
-  def isFalsified: Boolean = this match
-    case Passed          => false
-    case Falsified(_, _) => true
-
-trait Prop {
-  def check: TestCases => Result
-  def &&(that: Prop): Prop
-}
+opaque type Prop = (MaxSize, TestCases, RNG) => Result
 
 object Prop:
   opaque type FailedCase = String
+  object FailedCase:
+    extension (s: FailedCase) def +(that: String): FailedCase = s.+(that)
+    extension (f: FailedCase) def string: String = f
+    def fromString(s: String): FailedCase = s
+
   opaque type SuccessCount = Int
-  opaque type Prop = (TestCases, RNG) => Result
+  object SuccessCount:
+    extension (s: SuccessCount) def +(that: Int): SuccessCount = s.+(that)
+    extension (x: SuccessCount) def toInt: Int = x
+    def fromInt(x: Int): SuccessCount = x
+
+  opaque type TestCases = Int
+  object TestCases:
+    extension (x: TestCases) def toInt: Int = x
+    def fromInt(x: Int): TestCases = x
+
+  enum Result:
+    case Passed
+    case Falsified(failure: FailedCase, successful: SuccessCount)
+
+    def isFalsified: Boolean = this match
+      case Passed          => false
+      case Falsified(_, _) => true
+
+  opaque type MaxSize = Int
+  object MaxSize:
+    extension (x: MaxSize) def toInt: Int = x
+    def fromInt(x: Int): MaxSize = x
+
+  def apply(f: (TestCases, RNG) => Result): Prop =
+    (_, n, rng) => f(n, rng)
+
   def forAll[A](gen: Gen[A])(f: A => Boolean): Prop =
-    (t, r) =>
-      val (a, next) = gen.next(r)
-      for (i <- 0 to t) {
-        // gen next
-        // run f
-        // if true record result and i
-        // if false return Falsified
-        // in case of exception Falsified
+    def formatFailedCase(a: A, maybeEx: Option[Exception] = None): String =
+      maybeEx match
+        case Some(ex) =>
+          s"Test case $a failed \n" +
+            s"generated an exception: ${ex.getMessage()} \n" +
+            s"with stack trace: ${ex.getStackTrace.mkString("\n")}"
+        case _ => s"Test case $a failed"
+
+    (max, t, r) =>
+      for (i <- 0 to t.toInt) {
+        gen.next(r) match
+          case (a, n) =>
+            try
+              if (f(a)) then Result.Passed
+              else Result.Falsified(formatFailedCase(a), i)
+            catch
+              case e: Exception =>
+                Result.Falsified(formatFailedCase(a, Some(e)), i)
       }
       Result.Passed
+
+  extension (self: Prop)
+    def &&(that: Prop): Prop =
+      (max, t, r) =>
+        (self(max, t, r), that(max, t, r)) match
+          case (Result.Falsified(a, b), _) => Result.Falsified("Left " + a, b)
+          case (_, Result.Falsified(a, b)) => Result.Falsified("Right " + a, b)
+          case _                           => Result.Passed
+
+  extension (self: Prop)
+    def ||(that: Prop): Prop =
+      (max, t, r) =>
+        (self(max, t, r), that(max, t, r)) match
+          case (Result.Falsified(a, b), Result.Falsified(c, d)) =>
+            Result.Falsified(a + c, b + d)
+          case _ => Result.Passed
+
+  extension (self: Prop)
+    def check(
+        maxSize: MaxSize = 100,
+        testCases: TestCases = 100,
+        rng: RNG = RNG.Simple(System.currentTimeMillis)
+    ): Result =
+      self(maxSize, testCases, rng)
 
 opaque type Gen[+A] = State[RNG, A]
 
@@ -73,6 +124,7 @@ object Gen:
 
   def choose(r: Range): Gen[Int] = choose(r.start, r.end)
 
+  // does this implementation ensures fair choosing between the numbers?
   // def boolean: Gen[Boolean] = choose(0, 1).map(s =>
   //   s match
   //     case i if i == 0 => true
@@ -106,7 +158,7 @@ object Gen:
     val threshold = g1(1).abs / (g1(1).abs + g2(1).abs)
     State(RNG.double).flatMap(d => if d > threshold then g2(0) else g1(0))
 
-  val ASCII_RANGE = 0 to 255
+  val ASCII_RANGE = 32 to 126 // space, numbers letters and symbols
   def ascii(n: Int): Gen[String] =
     choose(ASCII_RANGE).map(_.toChar).listOfN(n).map(_.toString())
 

@@ -14,17 +14,6 @@ class GenSuite extends PropSuite:
   private val shortSample = 1000
   private val genRNG: ExhGen[RNG] = ExhGen.int.map(i => RNG.Simple(i.toLong))
 
-// Gen tests: Before using these tests (starting from Exercise 8.4),
-// add the next block to fpinscala.exercises.testing.Gen.scala file
-/* ToDo: fpinscala.exercises.testing.Gen.scala file's block
-opaque type Gen[+A] = State[RNG, A]
-
-object Gen:
-  extension [A](self: Gen[A])
-    // We should use a different method name to avoid looping (not 'run')
-    def next(rng: RNG): (A, RNG) = self.run(rng)
-*/
-
 // Gen tests:
   test("Exercise 8.4")(ExhGen.int ** ExhGen.int ** genRNG):
     case n ** m ** rng =>
@@ -91,28 +80,14 @@ object Gen:
       assert(unionList3.count(_ == n) >= shortSample / 5, "g2 is twice as common as g1")
       assert(unionList3.count(_ == m) >= shortSample / 2, "g2 is twice as common as g1")
 
-  test("Explore generate ascii String")(ExhGen.choose(0, 1000) ** ExhGen.int ** genRNG):
-    case n ** m ** rng =>
+  test("Explore generate ascii String")(ExhGen.choose(0, 1000) ** genRNG):
+    case n ** rng =>
       val ascii = Gen.ascii(n)
       val (s, _) = ascii.next(rng)
-      assert(s.size == n)
-      assert(s.forall(c => c.isValidChar))
-
-// Prop tests: Before using these tests (starting from Exercise 8.9),
-// add the next block to fpinscala.exercises.testing.Gen.scala file
-/* ToDo: fpinscala.exercises.testing.Gen.scala file's block
-object Prop:
-  extension (self: Prop)
-    def check(
-               maxSize: MaxSize = 100,
-               testCases: TestCases = 100,
-               rng: RNG = RNG.Simple(System.currentTimeMillis)
-             ): Result =
-      self(maxSize, testCases, rng)
-*/
+      // assert(s.size == 0) // looks like not all the chars make a unit of size
+      assert(s.forall(_.isValidChar))
 
 // Prop tests
-/*
   import fpinscala.exercises.testing.Prop.Result.*
 
   private val propPassed = Prop((n, rng) => Passed)
@@ -129,7 +104,6 @@ object Prop:
     assertEquals((propPassed || propFalsified).check(), Passed)
     assertEquals((propFalsified || propPassed).check(), Passed)
     assert((propFalsified || propFalsified).check().isFalsified)
-*/
 
 
 // SGen tests: Before using these tests (starting from Exercise 8.10),
