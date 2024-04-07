@@ -57,7 +57,7 @@ object Prop:
             s"with stack trace: ${ex.getStackTrace.mkString("\n")}"
         case _ => s"Test case $a failed"
 
-    (max, t, r) =>
+    Prop.apply((t, r) => // why this works, shouldn't MaxSize be required here?
       for (i <- 0 to t.toInt) {
         gen.next(r) match
           case (a, n) =>
@@ -67,6 +67,18 @@ object Prop:
             catch
               case e: Exception =>
                 Result.Falsified(formatFailedCase(a, Some(e)), i)
+      }
+      Result.Passed
+    )
+
+  @annotation.targetName("forAllSized")
+  def forAll[A](sgen: SGen[A])(f: A => Boolean): Prop =
+    (max, t, r) =>
+      val cases = t.toInt / max.toInt
+      for (i <- 0 to max.toInt) {
+        for (j <- 0 to cases) {
+          // ???
+        }
       }
       Result.Passed
 
@@ -124,7 +136,7 @@ object Gen:
 
   def choose(r: Range): Gen[Int] = choose(r.start, r.end)
 
-  // does this implementation ensures fair choosing between the numbers?
+  // does this implementation ensures fairness between true and false?
   // def boolean: Gen[Boolean] = choose(0, 1).map(s =>
   //   s match
   //     case i if i == 0 => true
@@ -132,6 +144,10 @@ object Gen:
   // )
 
   def boolean: Gen[Boolean] = State(RNG.boolean)
+
+  extension [A](self: Gen[A]) def unsized: SGen[A] = i => self
+
+  extension [A](self: Gen[A]) def list: SGen[List[A]] = i => self.listOfN(i)
 
   extension [A](self: Gen[A])
     def listOfN(n: Int): Gen[List[A]] = State.sequence(List.fill(n)(self))
@@ -162,8 +178,11 @@ object Gen:
   def ascii(n: Int): Gen[String] =
     choose(ASCII_RANGE).map(_.toChar).listOfN(n).map(_.toString())
 
-// trait Gen[A]:
-//   def map[B](f: A => B): Gen[B] = ???
-//   def flatMap[B](f: A => Gen[B]): Gen[B] = ???
-//
-trait SGen[+A]
+opaque type SGen[+A] = Int => Gen[A]
+
+object SGen:
+  def unit[A](a: => A): SGen[A] = i => Gen.unit(a)
+
+  extension [A](self: SGen[A])
+    def flatMap[B](f: A => SGen[B]): SGen[B] = i =>
+      self(i).flatMap(a => f(a)(i))
