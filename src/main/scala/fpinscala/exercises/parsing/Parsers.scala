@@ -10,6 +10,15 @@ trait Parsers[Parser[+_]]:
 
   def char(c: Char): Parser[Char] = string(c.toString).map(_.charAt(0))
   def string(s: String): Parser[String]
+  def letter = regex("a-zA-Z".r)
+  def digit = regex("""\d""".r)
+  def whitespace = regex("""\s""".r)
+
+  def surrounded(c: Char): Parser[String] = for {
+    _ <- char(c)
+    s <- regex(".*".r)
+    _ <- char(c)
+  } yield s
 
   // NOTE: this is required because the map impl uses succeed which creates a circular reference
   def defaultSucceed[A](a: A): Parser[A] =
@@ -45,8 +54,10 @@ trait Parsers[Parser[+_]]:
       )
 
   extension [A](p: Parser[A])
-
     def run(input: String): Either[ParseError, A]
+
+    // NOTE: checks the parser with the given element
+    def check: Parser[A]
 
     def listOfN(n: Int): Parser[List[A]] =
       n match
@@ -72,13 +83,15 @@ trait Parsers[Parser[+_]]:
         ab <- succeed(a, b)
       } yield ab
 
-    def **[B](p2: Parser[B]): Parser[(A, B)] = product(p2)
+    def **[B](p2: => Parser[B]): Parser[(A, B)] = product(p2)
 
     def map2[B, C](p2: => Parser[B])(f: (A, B) => C): Parser[C] =
       for {
         a <- p
         b <- p2
       } yield f(a, b)
+
+    def single = p.map2(whitespace) { (a, b) => a}
 
     def many: Parser[List[A]] = p.map2(p.many)((a, b) => a :: b) | succeed(Nil)
 
@@ -119,15 +132,30 @@ case class ParseError(
 class Examples[Parser[+_]](P: Parsers[Parser]):
   import P.*
 
-  val nonNegativeInt: Parser[Int] = regex("""^\d{1}""".r).flatMap { d =>
-    d.toIntOption match
-      case Some(value) => succeed(value)
-      case _           => fail("cannot parse integer from" + d)
-  }
+  val nonNegativeInt: Parser[Int] = for {
+    d <- regex("""^\d+""".r)
+    i <- d.toIntOption match {
+      case Some(v) => succeed(v)
+      case _       => fail(s"cannot parse integer from $d")
+    }
+  } yield i
+
+  val nConsecutiveAs: Parser[Int] =
+    for {
+      n <- nonNegativeInt
+      _ <- char('a').listOfN(n)
+    } yield n
+
+  val nConsecutiveChars: Parser[Int] =
+    for {
+      n <- nonNegativeInt
+      s <- regex(".".r) // next char
+      _ <- char(s.charAt(0)).listOfN(n)
+    } yield n
 
   // NOTE:what is regex returning? assuming is the regex matched
-  // use ** to combine regex and then verify the second string is the same char the number of the first
-  val nConsecutiveAs: Parser[Int] =
+  // use map2 to combine with regex and then verify the second string is the same char the number of the first
+  val _nConsecutiveChars: Parser[Int] =
     nonNegativeInt.map2(regex(""".*""".r)) { (d, s) =>
       def times(t: Int): Boolean = {
         val ref = s.charAt(0)
