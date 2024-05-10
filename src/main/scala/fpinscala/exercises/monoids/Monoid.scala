@@ -32,7 +32,13 @@ object Monoid:
     def combine(a1: Boolean, a2: Boolean): Boolean = a1 && a2
     val empty = true
 
-  def optionMonoid[A]: Monoid[Option[A]] = ???
+  def optionMonoid[A](f: (A, A) => A): Monoid[Option[A]] = new:
+    def combine(a1: Option[A], a2: Option[A]): Option[A] = (a1, a2) match
+      case (Some(v1), Some(v2)) => Some(f(v1, v2))
+      case (s, None) => s
+      case (None, s) => s
+      case _ => None
+    val empty = None
 
   def dual[A](m: Monoid[A]): Monoid[A] = new:
     def combine(x: A, y: A): A = m.combine(y, x)
