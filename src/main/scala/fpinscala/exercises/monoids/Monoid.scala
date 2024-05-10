@@ -44,7 +44,9 @@ object Monoid:
     def combine(x: A, y: A): A = m.combine(y, x)
     val empty = m.empty
 
-  def endoMonoid[A]: Monoid[A => A] = ???
+  def endoMonoid[A]: Monoid[A => A] = new:
+    def combine(a1: A => A, a2: A => A): A => A = a => a2(a1(a))
+    val empty = a => a
 
   import fpinscala.exercises.testing.{Prop, Gen}
   // import Gen.`**`
