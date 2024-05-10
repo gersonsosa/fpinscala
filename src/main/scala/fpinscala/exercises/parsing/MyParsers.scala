@@ -2,17 +2,26 @@
 package fpinscala.exercises.parsing
 
 // how to define fields for the type ParserError in Parsers?
-type ParserError = {
+// Inspiration drawned from https://rustc-dev-guide.rust-lang.org/diagnostics.html
+type MyParserError = {
   // byte offset position where the error ocurred
   // not sure if byte is a good type, cannot think of a better one
+  // this avoids issues such as the input is longer than Int
   val position: Byte
   // until what point are we going to hightligh the error when rendering
-  val span: Int
+  val span: Span
+  val label: String
+  val code: String
   val message: String
-  val suggestion: String
+  val note: String
 }
 
-trait Parsers[ParserError, Parser[+_]]:
+// Represents a portion of the input that the parser is processing, an error can refer to it
+case class Span(start: Byte, offset: Byte) {
+  def label(l: String): Span = ???
+}
+
+trait MyParsers[ParserError, Parser[+_]]:
   def char(c: Char): Parser[Char]
   def string(s: String): Parser[String]
 

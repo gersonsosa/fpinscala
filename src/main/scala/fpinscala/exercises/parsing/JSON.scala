@@ -23,7 +23,7 @@ object JSON:
   def jsonParser[Parser[+_]](P: Parsers[Parser]): Parser[JSON] =
     import P.*
 
-    def element(e: String) = string(e).single
+    def element(e: String) = string(e).strip
 
     def jwhitespace = regex("[ \t\n\r]+".r)
 
@@ -46,20 +46,20 @@ object JSON:
 
     def jstring = for {
       _ <- element(""""""")
-      s <- (regex("\\w".r) | esc).single.many1.slice
+      s <- (regex("\\w".r) | esc).strip.many1.slice
       _ <- element(""""""")
     } yield JString(s)
 
     def jval: Parser[JSON] =
-      (jstring | jnumber | obj | array | bool | succeed(JNull)).single
+      (jstring | jnumber | obj | array | bool | succeed(JNull)).strip
 
     def array: Parser[JSON] = for {
       _ <- element("[")
-      c <- (jval | element(",").map(JString(_))).single.many1
+      c <- (jval | element(",").map(JString(_))).strip.many1
       _ <- element("[")
     } yield JArray(IndexedSeq.from(c))
 
-    def prop = (regex("\\w".r) | esc).single
+    def prop = (regex("\\w".r) | esc).strip
       .map2(char(':')) { (name, _) => name }
       .map2(jstring) { (a, b) => (a -> b) }
 

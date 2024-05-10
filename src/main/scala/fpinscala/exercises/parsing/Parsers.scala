@@ -56,12 +56,13 @@ trait Parsers[Parser[+_]]:
   extension [A](p: Parser[A])
     def run(input: String): Either[ParseError, A]
 
-    // NOTE: checks the parser with the given element
-    def check: Parser[A]
+    // NOTE: do not commit to this parser by default, just try it if it doesn't
+    // work bias towards alternatives
+    def attempt: Parser[A]
 
     def listOfN(n: Int): Parser[List[A]] =
       n match
-        case i if i == 0 => succeed(Nil)
+        case i if i <= 0 => succeed(Nil)
         case i if i > 0  => p.map2(p.listOfN(n - 1))((a, b) => a :: b)
 
     // listOfN based on sequence
@@ -85,13 +86,19 @@ trait Parsers[Parser[+_]]:
 
     def **[B](p2: => Parser[B]): Parser[(A, B)] = product(p2)
 
+    def *>[B](p2: => Parser[B]): Parser[B] = p.map2(p2)((_, b) => b)
+    def <*[B](p2: => Parser[B]): Parser[A] = p.map2(p2)((a, _) => a)
+
     def map2[B, C](p2: => Parser[B])(f: (A, B) => C): Parser[C] =
       for {
         a <- p
         b <- p2
       } yield f(a, b)
 
-    def single = p.map2(whitespace) { (a, b) => a}
+    /*
+     * strips the whitespace surrounding the parser
+     */
+    def strip = p.map2(whitespace) { (a, b) => a}
 
     def many: Parser[List[A]] = p.map2(p.many)((a, b) => a :: b) | succeed(Nil)
 
@@ -99,6 +106,14 @@ trait Parsers[Parser[+_]]:
 
     def flatMap[B](f: A => Parser[B]): Parser[B]
 
+    def label(msg: String): Parser[A]
+    def scope(msg: String): Parser[A]
+
+// NOTE: if this parses the whole input every time it appears to be inefficient
+// mostly on calculating the line and col for large inputs.
+// on the other side if this holds just a small part of the input
+// it will explode the amount of memory on duplicating the string for all the
+// locations needed while parsing
 case class Location(input: String, offset: Int = 0):
 
   lazy val line = input.slice(0, offset + 1).count(_ == '\n') + 1
@@ -112,9 +127,9 @@ case class Location(input: String, offset: Int = 0):
 
   def advanceBy(n: Int) = copy(offset = offset + n)
 
-  def remaining: String = ???
+  def remaining: String = input.substring(offset)
 
-  def slice(n: Int) = ???
+  def slice(n: Int) = input.slice(offset, n)
 
   /* Returns the line corresponding to this location */
   def currentLine: String =
@@ -125,15 +140,17 @@ case class ParseError(
     stack: List[(Location, String)] = List(),
     otherFailures: List[ParseError] = List()
 ):
-  def push(loc: Location, msg: String): ParseError = ???
+  def push(loc: Location, msg: String): ParseError = copy(stack = (loc, msg) :: stack)
 
-  def label(s: String): ParseError = ???
+  def label(msg: String): ParseError = ParseError(latestOrNone.map((_, msg)).toList)
+
+  def latestOrNone: Option[Location] = stack.lastOption.map(_(0)) // get only the Location
 
 class Examples[Parser[+_]](P: Parsers[Parser]):
   import P.*
 
   val nonNegativeInt: Parser[Int] = for {
-    d <- regex("""^\d+""".r)
+    d <- regex("""^\d+""".r).label("starts with an integer")
     i <- d.toIntOption match {
       case Some(v) => succeed(v)
       case _       => fail(s"cannot parse integer from $d")
