@@ -48,10 +48,21 @@ object Monoid:
     def combine(a1: A => A, a2: A => A): A => A = a => a2(a1(a))
     val empty = a => a
 
-  import fpinscala.exercises.testing.{Prop, Gen}
-  // import Gen.`**`
+  import fpinscala.answers.testing.{Prop, Gen}
+  import Gen.`**`
 
-  def monoidLaws[A](m: Monoid[A], gen: Gen[A]): Prop = ???
+  def monoidLaws[A](m: Monoid[A], gen: Gen[A]): Prop =
+    // combine(empty, gen) == gen
+    Prop.forAll(gen)(a => m.combine(m.empty, a) == a)
+    // combine(gen, empty) == gen
+    Prop.forAll(gen)(a => m.combine(a, m.empty) == a)
+    // combine(gen, gen1) == combine(gen1, gen)
+    Prop.forAll(gen ** gen) { case (a1, a2) => m.combine(a1, a2) == m.combine(a2, a1)}
+    // combine(gen, combine(gen1, gen2)) == combine(gen1, combine(gen, gen2))
+    Prop.forAll(gen ** gen ** gen) {
+      case ((a1, a2), a3) =>
+        m.combine(a1, m.combine(a2, a3)) == m.combine(a2, m.combine(a1, a3))
+    }
 
   def combineAll[A](as: List[A], m: Monoid[A]): A =
     ???
