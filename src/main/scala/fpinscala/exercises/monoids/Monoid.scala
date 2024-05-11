@@ -78,7 +78,10 @@ object Monoid:
     foldMap(as, endoMonoid)(ft)(acc)
 
   def foldMapV[A, B](as: IndexedSeq[A], m: Monoid[B])(f: A => B): B =
-    ???
+    as.splitAt(as.size/2) match
+      case (h1, h2) if h1.isEmpty && h2.isEmpty => m.empty
+      case (h1, h2) if h1.isEmpty => f(h2.head)
+      case (h1, h2) => m.combine(foldMapV(h1, m)(f), foldMapV(h2, m)(f))
 
   def par[A](m: Monoid[A]): Monoid[Par[A]] =
     ???
