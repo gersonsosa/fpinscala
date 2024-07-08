@@ -7,7 +7,7 @@ import fpinscala.exercises.common.Common.*
 import fpinscala.exercises.common.PropSuite
 import fpinscala.exercises.monoids.Monoid.*
 import fpinscala.exercises.monoids.Monoid.WC.*
-import fpinscala.exercises.parallelism.Nonblocking.*
+import fpinscala.answers.parallelism.Nonblocking.*
 
 import java.util.concurrent.Executors
 
@@ -40,11 +40,11 @@ class MonoidSuite extends PropSuite:
 
   test("Monoid.optionMonoid")(genIntOption ** genIntOption ** genIntOption):
     case a ** b ** c =>
-      assertMonoid(optionMonoid[Int], a, b, c)
+      assertMonoid(optionMonoid[Int](intAddition.combine), a, b, c)
 
   test("Monoid.dual")(genIntOption ** genIntOption ** genIntOption):
     case a ** b ** c =>
-      assertMonoid(dual(optionMonoid[Int]), a, b, c)
+      assertMonoid(dual(optionMonoid[Int](intAddition.combine)), a, b, c)
 
   test("Monoid.endoMonoid")(Gen.int ** Gen.int ** Gen.int ** Gen.int):
     case i0 ** i1 ** i2 ** i3 =>
@@ -57,10 +57,10 @@ class MonoidSuite extends PropSuite:
       assertEquals(m.combine(m.empty, a)(i0), a(i0), "identity")
       assertEquals(m.combine(a, m.combine(b, c))(i0), m.combine(m.combine(a, b), c)(i0), "associativity")
 
-  /* GenSuite from chapter 8 must be passed
+  /* GenSuite from chapter 8 must be passed */
   test("Monoid.monoidLaws")(Gen.unit(())): _ =>
-    import fpinscala.exercises.testing.Gen as EGen
-    import fpinscala.exercises.testing.Prop.Result.*
+    import fpinscala.answers.testing.Gen as EGen
+    import fpinscala.answers.testing.Prop.Result.*
 
     val genInt = EGen.choose(Int.MinValue, Int.MaxValue)
     val genOption = genInt.map(i => if i % 2 == 0 then Some(i / 2) else None)
@@ -69,8 +69,7 @@ class MonoidSuite extends PropSuite:
     assertEquals(monoidLaws(intMultiplication, genInt).check(), Passed)
     assertEquals(monoidLaws(booleanOr, EGen.boolean).check(), Passed)
     assertEquals(monoidLaws(booleanAnd, EGen.boolean).check(), Passed)
-    assertEquals(monoidLaws(optionMonoid[Int], genOption).check(), Passed)
-  */
+    assertEquals(monoidLaws(optionMonoid[Int](intAddition.combine), genOption).check(), Passed)
 
   test("Monoid.combineAll")(genIntList ** genStringList ** genBooleanList):
     case ilist ** slist ** blist =>

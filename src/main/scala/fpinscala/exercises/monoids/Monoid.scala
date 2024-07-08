@@ -1,6 +1,6 @@
 package fpinscala.exercises.monoids
 
-import fpinscala.exercises.parallelism.Nonblocking.*
+import fpinscala.answers.parallelism.Nonblocking.*
 
 trait Monoid[A]:
   def combine(a1: A, a2: A): A
@@ -80,17 +80,45 @@ object Monoid:
   def foldMapV[A, B](as: IndexedSeq[A], m: Monoid[B])(f: A => B): B =
     as.splitAt(as.size/2) match
       case (h1, h2) if h1.isEmpty && h2.isEmpty => m.empty
-      case (h1, h2) if h1.isEmpty => f(h2.head)
+      case (h1, h2) if h1.isEmpty => f(h2.head) // since we splitted in half h2 is a single element
       case (h1, h2) => m.combine(foldMapV(h1, m)(f), foldMapV(h2, m)(f))
 
-  def par[A](m: Monoid[A]): Monoid[Par[A]] =
-    ???
+  def par[A](m: Monoid[A]): Monoid[Par[A]] = new:
+    def combine(a1: Par[A], a2: Par[A]): Par[A] = a1.map2(a2)(m.combine)
+    val empty = Par.unit(m.empty)
 
   def parFoldMap[A,B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] =
-    ???
+    v.splitAt(v.size/2) match
+      case (h1, h2) if h1.isEmpty && h2.isEmpty => par(m).empty
+      case (h1, h2) if h1.isEmpty => Par.asyncF(f)(h2.head)
+      // NOTE: map2 in par(m: Monoid) already forks
+      case (h1, h2) => par(m).combine(parFoldMap(h1, m)(f), parFoldMap(h2, m)(f))
 
+  final case class CmpResult(
+    min: Int,
+    max: Int,
+    ordered: Boolean
+  )
+
+  lazy val creativeMonoid: Monoid[CmpResult] = new:
+    def combine(left: CmpResult, right: CmpResult): CmpResult =
+      (left, right) match
+        case (CmpResult(min, l, true), CmpResult(r, max, true)) => CmpResult(min, max, l<r)
+        case _ => CmpResult(left.min, right.max, false) // NOTE: we may break the computation here, is not ordered
+    val empty = CmpResult(0, 0, true)
+
+  /*
+   * Checks whether this IndexedSeq is ordered using a Monoid
+   *
+   * ✅ approach0: Splitting the seq in half, the postition still matters but
+   * since the seq is splitted in half this will work with foldMapV
+   * ❌ natural approach: check items from left to right comparing by two
+   * This won't work, the monoid combine is not associative since the position
+   * matters in the combine operation.
+  */
   def ordered(ints: IndexedSeq[Int]): Boolean =
-    ???
+    // foldMapV splits in half and handles, empty, single element
+    foldMapV(ints, creativeMonoid)(a => CmpResult(a, a, true)).ordered
 
   enum WC:
     case Stub(chars: String)
