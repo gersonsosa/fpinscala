@@ -1,6 +1,6 @@
 name := "fpinscala"
 
-ThisBuild / scalaVersion := "3.4.1"
+ThisBuild / scalaVersion := "3.5.0"
 
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(
@@ -16,4 +16,4 @@ ThisBuild / scalacOptions ++= List(
   "-source:future"
 )
 
-ThisBuild / libraryDependencies += "org.scalameta" %% "munit" % "0.7.29" % Test
+ThisBuild / libraryDependencies += "org.scalameta" %% "munit" % "1.0.1" % Test
