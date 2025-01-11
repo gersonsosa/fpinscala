@@ -122,11 +122,31 @@ object Monoid:
 
   enum WC:
     case Stub(chars: String)
-    case Part(lStub: String, words: Int, rStub: String)
+    case Part(leftStub: String, words: Int, rightStub: String)
 
-  lazy val wcMonoid: Monoid[WC] = ???
+  lazy val wcMonoid: Monoid[WC] = new:
+    def count(s: String): Int = if (s.isEmpty()) then 0 else 1
 
-  def count(s: String): Int = ???
+    // a stub has no words so we can join them
+    def combine(l: WC, r: WC): WC = (l, r) match {
+      case (WC.Stub(c), WC.Stub(cr)) => WC.Stub(c + cr)
+      case (WC.Stub(c), WC.Part(left, w, right)) => WC.Part(c + left, w, right)
+      case (WC.Part(left, w, right), WC.Stub(c)) => WC.Part(left, w, right + c)
+      case (WC.Part(ll, wl, rl), WC.Part(lr, wr, rr)) => WC.Part(ll, wl + wr + count(rl+lr), rr)
+    }
+    def empty: WC = WC.Stub("")
+
+  def wcGen: Gen[WC] =
+    val smallStr = Gen.choose(0, 10).flatMap(Gen.stringN)
+    val genStub = smallStr.map(s => WC.Stub(s))
+    val genPart = for
+      l <- smallStr
+      w <- Gen.choose(0, 10)
+      r <- smallStr
+    yield WC.Part(l, w, r)
+    Gen.union(genStub, genPart)
+
+  val wcMonoidTest = monoidLaws(wcMonoid, wcGen)
 
   given productMonoid[A, B](using ma: Monoid[A], mb: Monoid[B]): Monoid[(A, B)] with
     def combine(x: (A, B), y: (A, B)) = ???
