@@ -148,6 +148,14 @@ object Monoid:
 
   val wcMonoidTest = monoidLaws(wcMonoid, wcGen)
 
+  def count(s: String): Int = {
+    def countIfNotEmpty(s: String) = if (s.isEmpty) 0 else 1
+
+    foldMapV(s.toIndexedSeq, wcMonoid)(c => if (c.isWhitespace) WC.Part("", 0, "") else WC.Stub(c.toString)) match
+      case WC.Stub(stub) =>  countIfNotEmpty(stub)
+      case WC.Part(l, c, r) => countIfNotEmpty(l) + c + countIfNotEmpty(r)
+  }
+
   given productMonoid[A, B](using ma: Monoid[A], mb: Monoid[B]): Monoid[(A, B)] with
     def combine(x: (A, B), y: (A, B)) = ???
     val empty = ???
