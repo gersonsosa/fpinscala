@@ -50,11 +50,12 @@ trait Monad[F[_]] extends Functor[F]:
     fa.map(a => List.fill(n)(a))
 
   def compose[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] =
-    ???
+    a => f(a).flatMap(g)
 
   extension [A](fa: F[A])
     def flatMapViaCompose[B](f: A => F[B]): F[B] =
-      ???
+      // NOTE: is tricky to think this doesn't stack overflows, you have to be careful to implement flatMap or map
+      compose(_ => fa, f)(())
 
   // NOTE: builds a Monad of elements that satisfies the function a -> F[Boolean]
   // Option of list with elements that satisfies f
