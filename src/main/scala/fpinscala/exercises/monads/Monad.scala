@@ -64,30 +64,51 @@ trait Monad[F[_]] extends Functor[F]:
     as.foldRight(unit(List.empty[A]))((a, acc) => f(a).flatMap(bool => if bool then unit(a).map2(acc)(_ :: _) else acc))
 
   extension [A](ffa: F[F[A]]) def join: F[A] =
-    ???
+    ffa.flatMap(identity)
 
   extension [A](fa: F[A])
     def flatMapViaJoinAndMap[B](f: A => F[B]): F[B] =
-      ???
+      join(fa.map[F[B]](f))
 
   def composeViaJoinAndMap[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] =
-    ???
+    a => join(f(a).map[F[C]](g))
+
+  // Right identity
+  // compose(f, unit) == f
+  // a => f(a).flatMap(unit) == f
+  // ... f.flatMap(unit) == f
+  // f.flatMap(unit) == f
+
+  // Left identity
+  // compose(unit, f) == f
+  // a => unit(a).flatMap(f) == f
+  // (a => unit(a).flatMap(f))(y) == f(y)
+  // unit(y).flatMap(f) == f(y)
+
+  // join(f.map(unit)) == f
+  // join(unit.map(f)) == f
+
+  // join(x.map(unit)) == x
+  // join(unit.map(x)) == x
 
 end Monad
 
 object Monad:
+  // associative ditto
   given genMonad: Monad[Gen] with
     def unit[A](a: => A): Gen[A] = Gen.unit(a)
     extension [A](fa: Gen[A])
       override def flatMap[B](f: A => Gen[B]): Gen[B] =
         Gen.flatMap(fa)(f)
 
+  // associative if you create a Par[Par[A]] == Par[A]?
   given parMonad: Monad[Par] with
     def unit[A](a: => A) = Par.unit(a)
     extension [A](fa: Par[A])
       override def flatMap[B](f: A => Par[B]): Par[B] =
         fa.chooser(f)
 
+  // associative a parser that succeeds of a parser will be the original parser?
   def parserMonad[P[+_]](p: Parsers[P]): Monad[P] = new:
     def unit[A](a: => A) = p.succeed(a)
     extension [A](fa: P[A])
@@ -124,16 +145,16 @@ end Monad
 
 case class Id[+A](value: A):
   def map[B](f: A => B): Id[B] =
-    ???
+    Id(f(value))
   def flatMap[B](f: A => Id[B]): Id[B] =
-    ???
+    f(value)
 
 object Id:
   given idMonad: Monad[Id] with
-    def unit[A](a: => A) = ???
+    def unit[A](a: => A) = Id(a)
     extension [A](fa: Id[A])
       override def flatMap[B](f: A => Id[B]) =
-        ???
+        f(fa.value)
 
 opaque type Reader[-R, +A] = R => A
 
