@@ -20,7 +20,7 @@ trait Applicative[F[_]] extends Functor[F]:
     // convert f into F[A => B => C] which has the form of apply first param
     // then partially apply F[A] and then F[B]
     def map2[B,C](fb: F[B])(f: (A, B) => C): F[C] =
-      apply(apply(unit(f.curried))(fa))(fb)
+      apply(fa.map(f.curried))(fb)
 
     def map[B](f: A => B): F[B] =
       apply(unit(f))(fa)
@@ -45,14 +45,14 @@ trait Applicative[F[_]] extends Functor[F]:
       fb: F[B],
       fc: F[C]
     )(f: (A, B, C) => D): F[D] =
-      apply(apply(apply(unit(f.curried))(fa))(fb))(fc)
+      apply(fa.map2(fb)((a,b) => f(a,b,_)))(fc)
 
     def map4[B, C, D, E](
       fb: F[B],
       fc: F[C],
       fd: F[D]
     )(f: (A, B, C, D) => E): F[E] =
-      apply(apply(apply(apply(unit(f.curried))(fa))(fb))(fc))(fd)
+      apply(fa.map3(fb, fc)((a, b, c) => f(a, b, c, _)))(fd)
 
   def product[G[_]](G: Applicative[G]): Applicative[[x] =>> (F[x], G[x])] =
     ???
