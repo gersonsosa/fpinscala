@@ -82,14 +82,13 @@ object Applicative:
     case Invalid(error: E) extends Validated[E, Nothing]
 
   object Validated:
-    given validatedApplicative[E: Monoid]: Applicative[Validated[E, _]] with
+    given validatedApplicative:[E: Monoid] => Applicative[Validated[E, _]]:
       def unit[A](a: => A) = Valid(a)
       extension [A](fa: Validated[E, A])
         override def map2[B, C](fb: Validated[E, B])(f: (A, B) => C) =
-          val m = summon[Monoid[E]]
           (fa, fb) match {
             case (Valid(a), Valid(b)) => Valid(f(a, b))
-            case (Invalid(a), Invalid(b)) => Invalid(m.combine(a, b))
+            case (Invalid(a), Invalid(b)) => Invalid(summon[Monoid[E]].combine(a, b))
             case (e @ Invalid(_), _) => e
             case (_, e @ Invalid(_)) => e
           }
@@ -105,12 +104,12 @@ object Applicative:
     extension [A](oa: Option[A])
       override def flatMap[B](f: A => Option[B]) = oa.flatMap(f)
 
-  given eitherMonad[E]: Monad[Either[E, _]] with
+  given eitherMonad: [E] => Monad[Either[E, _]]:
     def unit[A](a: => A): Either[E, A] = Right(a)
     extension [A](eea: Either[E, A])
       override def flatMap[B](f: A => Either[E, B]) = eea.flatMap(f)
 
-  given stateMonad[S]: Monad[State[S, _]] with
+  given stateMonad: [S] => Monad[State[S, _]]:
     def unit[A](a: => A): State[S, A] = State(s => (a, s))
     extension [A](st: State[S, A])
       override def flatMap[B](f: A => State[S, B]): State[S, B] =
