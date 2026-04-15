@@ -41,6 +41,10 @@ object MyParser extends Parsers[MyParser.ParserAttempt]:
 
   def succeed[A](a: A): ParserAttempt[A] = l => Result.Success(a, 0)
 
+  def fail(msg: String): MyParser.ParserAttempt[Nothing] = ???
+
+  def sequence[A](l: List[MyParser.ParserAttempt[A]]): MyParser.ParserAttempt[List[A]] = ???
+
   extension [A](p: ParserAttempt[A])
     def slice: ParserAttempt[String] =
       loc =>
@@ -66,4 +70,5 @@ object MyParser extends Parsers[MyParser.ParserAttempt]:
             .advanceSuccess(consumed)
           case f @ Result.Failure(_, _) => f
 
+    def run(input: String): Either[ParseError, A] = ???
 

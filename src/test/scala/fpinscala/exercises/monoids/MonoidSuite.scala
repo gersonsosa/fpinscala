@@ -127,6 +127,10 @@ class MonoidSuite extends PropSuite:
     val expected = if str.isEmpty then 0 else str.trim.split("\\s+").length
     assertEquals(count(str), expected)
 
+  test("Monoid.countb")(genStringList.map(_.mkString(" "))): str =>
+    val expected = if str.isEmpty then 0 else str.trim.split("\\s+").length
+    assertEquals(countb(str), expected, clue = s"$str, has $expected not ${countb(str)}")
+
   given Monoid[Int] = intAddition
   given Monoid[String] = stringMonoid
 

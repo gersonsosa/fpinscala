@@ -81,7 +81,11 @@ object Monoid:
     as.splitAt(as.size/2) match
       case (h1, h2) if h1.isEmpty && h2.isEmpty => m.empty
       case (h1, h2) if h1.isEmpty => f(h2.head) // since we splitted in half h2 is a single element
-      case (h1, h2) => m.combine(foldMapV(h1, m)(f), foldMapV(h2, m)(f))
+      case (h1, h2) => {
+        val c = m.combine(foldMapV(h1, m)(f), foldMapV(h2, m)(f))
+        println(s"combined [$h1] with [$h2] = [$c], orig=[$as]")
+        c
+      }
 
   def par[A](m: Monoid[A]): Monoid[Par[A]] = new:
     def combine(a1: Par[A], a2: Par[A]): Par[A] = a1.map2(a2)(m.combine)
@@ -173,5 +177,36 @@ object Monoid:
   def bag[A](as: IndexedSeq[A]): Map[A, Int] =
     as.foldLeft(Map.empty)((acc, e) => acc.updated(e, acc.getOrElse(e, 0) + 1))
 
+  // attempt to implement a more efficient word count in terms of allocated memory
+  enum WCB:
+    case Stub(b: Boolean)
+    case Part(l: Boolean, words: Int, r: Boolean)
+
+  given boolToInt: Conversion[Boolean, Int] = (b: Boolean) => if(b) 1 else 0
+
+  lazy val wcBitMonoid: Monoid[WCB] = new:
+    def empty: WCB = WCB.Stub(false)
+    def combine(l: WCB, r: WCB): WCB = (l, r) match
+      case (WCB.Stub(l), WCB.Stub(r)) => WCB.Stub(l & r)
+      case (WCB.Stub(c), WCB.Part(left, w, right)) => WCB.Part(c & left, w + boolToInt(!c & left & !right), right) // XXX: if c == false, left == true, right == false then +1 this is '010'
+      case (WCB.Part(left, w, right), WCB.Stub(c)) => WCB.Part(left, w + boolToInt(!left & right & !c), right & c) // XXX: if left == false, right == true, c == false then +1 this is '010'
+      case (WCB.Part(ll, wl, rl), WCB.Part(lr, wr, rr)) => WCB.Part(ll, wl + wr + boolToInt(rl | lr), rr)
+
+  def wcbGen: Gen[WCB] =
+    val genBool = Gen.boolean
+    val genStub = genBool.map(b => WCB.Stub(b))
+    val genPart = for
+      l <- genBool
+      w <- Gen.choose(0, 10)
+      r <- genBool
+    yield WCB.Part(l, w, r)
+    Gen.union(genStub, genPart)
+
+  val wcbMonoidTest = monoidLaws(wcBitMonoid, wcbGen)
+
+  def countb(s: String): Int =
+    foldMapV(s.toIndexedSeq, wcBitMonoid)(c => if (c.isWhitespace) WCB.Part(false, 0, false) else WCB.Stub(true)) match
+      case WCB.Stub(b) => boolToInt(b)
+      case WCB.Part(l, c, r) => c + boolToInt(l) + boolToInt(r)
 
 end Monoid
